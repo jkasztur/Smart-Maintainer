@@ -109,6 +109,31 @@ but can greatly increase fairness for which items get machine time.
 > [!CAUTION]
 > Smart blocking can alter the effectiveness of this program.
 
+## GTNH 2.8.4 compatibility
+
+Craftables are selected with `getCraftables({label = configured_name})` and
+submitted with `craftable.request(amount)`. Smart Maintainer does not require
+`getStack()` on craftable objects. The first matching craftable is used, as before.
+
+Item stock thresholds use a fresh `allItems()` stack iterator (or stack list),
+summing `size` for stacks whose `label` matches the configured name. Labels should
+uniquely identify maintained items: items with the same display label share a stock
+count. No `getItemsInNetwork()` or `getItemInNetwork()` method is required.
+Fluid thresholds still use `getFluidInNetwork(registry_name)`.
+
+The remaining API requirements are job methods `isComputing()` and `hasFailed()`,
+and CPU monitoring through `getCpus()` and `cpu.finalOutput()` (returning an output
+with a `label`). Missing methods or API errors during requests return `false` and
+an explanatory message. CPU monitoring retains its existing behavior.
+
+Run the mocked regression tests from the repository root with Lua 5.2 or later:
+
+```sh
+lua tests/AE2_test.lua
+```
+
+These tests do not replace an in-game check of the adapter and ME network.
+
 ## Example
 
 You want to passively smelt Stainless Steel, Aluminium, and Black Steel in your very slow EBF.
