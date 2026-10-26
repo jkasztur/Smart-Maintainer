@@ -8,8 +8,8 @@ local function exists(filename)
     return filesystem.exists(shell.getWorkingDirectory() .. "/" .. filename)
 end
 
-local repo = "https://raw.githubusercontent.com/rajsugavanam/Smart-Maintainer/";
-local branch = "master"
+local repo = "https://raw.githubusercontent.com/jkasztur/Smart-Maintainer/";
+local branch = "fix/2.8.4"
 
 for i = 1, #paths do
     if not filesystem.exists(shell.getWorkingDirectory() .. "/" .. paths[i]) then

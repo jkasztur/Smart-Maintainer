@@ -7,11 +7,16 @@
   - [Config](#config)
     - [Items](#items)
     - [Fluids](#fluids)
+  - [GTNH 2.8.4 compatibility](#gtnh-284-compatibility)
   - [Example](#example)
 <!--toc:end-->
 
 Keeps stock of items up to a threshold or indefinitely. Uses randomization to prevent crafts, on average, from
 repeatedly taking high priority crafting CPUs and blocking others.
+
+This fork is maintained at [jkasztur/Smart-Maintainer](https://github.com/jkasztur/Smart-Maintainer).
+The `fix/2.8.4` branch includes compatibility changes for the GTNH 2.8.4
+OpenComputers AE2 integration.
 
 Here's an example using one EBF to continuously level maintain three ingots...
 
@@ -29,7 +34,7 @@ Tungstensteel is stuck waiting to craft forever!
 
 ## Requirements
 
-In addition to an functional OpenComputers computer,
+In addition to a functional OpenComputers computer,
 
 - A full block ME interface connected to an OpenComputers adapter;
 - Crafting Monitors on **all** CPUs attached to the interface's network;
@@ -37,13 +42,16 @@ In addition to an functional OpenComputers computer,
 
 ## Installation
 
-Download and install in the computer:
+Download and install this fork's `fix/2.8.4` branch in the OpenComputers computer:
 
 ```bash
-wget https://raw.githubusercontent.com/rajsugavanam/Smart-Maintainer/master/installer.lua && installer
+wget -f https://raw.githubusercontent.com/jkasztur/Smart-Maintainer/fix/2.8.4/installer.lua installer.lua && installer
 ```
 
-This requires an internet card.
+This requires an internet card. The installer downloads the program files from
+`jkasztur/Smart-Maintainer` on the `fix/2.8.4` branch, keeps an existing
+`config.lua`, and reboots the computer. Run the same command from the original
+installation directory to update an existing installation.
 
 Run the program using
 
