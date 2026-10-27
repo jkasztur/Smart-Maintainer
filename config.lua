@@ -1,26 +1,24 @@
 local cfg = {}
 
 cfg["items"] = {
-    { -- Group 0
-        priority = 2,
-        batchMode = false,
-        entries = {
-            ["drop of Molten Polybenzimidazole"] = {512000, 16000, "molten.polybenzimidazole"},
-        }
-    },
     { -- Group 1
-        -- Priority mode: every cycle, recipe groups with higher priority
-        -- will be attempted first, default 0 if unspecified (priorityMode = false: recipe groups are randomized in order).
-        -- randomizeFrequency = k: every k cycles, the order in which these items are attempted to craft is shuffled (k=0: disable this behavior)
         priority = 3,
-        -- batchMode = true: items within the group will be crafted only if none are currently being crafted.
-        -- Decreases throughput, increases fairness. Useful for very long recipes.
         batchMode = true,
         entries = {
-            ["Aluminium Ingot"] = {nil, 16},
-            ["Stainless Steel Ingot"] = {512, 8},
+            ["Aluminium Ingot"] = {256, 16},
+            ["Stainless Steel Ingot"] = {256, 8},
+        }
+    },    
+    { -- Group 2
+        priority = 3,
+        batchMode = true,
+        entries = {
+            ["Integrated Processor"] = {32,4},
+            ["Processor Assembly"] = {16, 2},
+            ["Workstation"] = {8, 2},
         }
     }
+
 }
 
 -- Higher values reduce lag, but decrease throughput.
@@ -35,6 +33,6 @@ cfg["randomizeFrequency"] = 2
 -- false: disable randomization of the order recipe groups are attemped
 -- to be scheduled.
 -- true: higher priority recipe groups are scheduled first.
-cfg["priorityMode"] = false
+cfg["priorityMode"] = true
 
 return cfg
