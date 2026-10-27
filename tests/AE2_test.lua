@@ -2,6 +2,23 @@
 local me
 package.preload.component = function() return {me_interface = me} end
 local tests = 0
+-- OC component and userdata methods are tables with __call, not Lua functions.
+local function callback(fn)
+    return setmetatable({}, {__call = function(_, ...) return fn(...) end})
+end
+
+-- OC hides the metatable of userdata proxies behind the string "userdata".
+local function ocProxy(methods, call)
+    local proxy = {type = "userdata"}
+    for name, fn in pairs(methods or {}) do
+        proxy[name] = callback(fn)
+    end
+    return setmetatable(proxy, {
+        __metatable = "userdata",
+        __call = call,
+        __index = function() error("userdata does not support indexing") end,
+    })
+end
 local function setup(stacks)
     local calls = {requests = 0, lookups = 0, scans = 0, sleeps = 0}
     local job = {isComputing = function() return false end, hasFailed = function() return false end}
@@ -104,7 +121,7 @@ test("missing lookup and stock methods return useful errors", function()
     fails(ae2, "missing allItems()", 10)
     me.getFluidInNetwork = nil
     local ok, message = ae2.requestItem("Processor Assembly", 10, 1, "test.fluid")
-    assert(ok == false and message:find("missing getFluidInNetwork()", 1, true))
+    assert(ok == false and message:find("missing getFluidsInNetwork()", 1, true))
 end)
 test("missing request and job methods return useful errors", function()
     local ae2, _, craftable, job = setup()
@@ -148,5 +165,87 @@ test("CPU detection and batch readiness", function()
     assert(crafting["Processor Assembly"])
     assert(not ae2.batchReady({["Processor Assembly"] = {}}, crafting))
     assert(ae2.batchReady({Other = {}}, crafting))
+end)
+
+test("OC callable component, craftable and job methods", function()
+    local ae2, calls = setup()
+    local job = ocProxy({
+        isComputing = function() return calls.sleeps < 1 end,
+        hasFailed = function() return false end,
+    })
+    local craftable = ocProxy({request = function(amount)
+        calls.requests = calls.requests + 1
+        calls.amount = amount
+        return job
+    end})
+    me.getCraftables = callback(function(filter)
+        assert(filter.label == "Processor Assembly")
+        return {craftable}
+    end)
+    assert(ae2.requestItem("Processor Assembly", nil, 3))
+    assert(calls.requests == 1 and calls.amount == 3 and calls.sleeps == 1)
+end)
+test("OC protected iterator counts stock instead of treating it as an empty list", function()
+    local ae2, calls = setup()
+    me.allItems = callback(function()
+        local done = false
+        return ocProxy({}, function()
+            if done then return nil end
+            done = true
+            return {label = "Processor Assembly", size = 10}
+        end)
+    end)
+    fails(ae2, "meets or exceeds threshold", 10)
+    assert(calls.requests == 0)
+    assert(ae2.requestItem("Processor Assembly", 11, 2))
+end)
+test("missing methods on OC proxies return useful errors", function()
+    local ae2 = setup()
+    me.getCraftables = function() return {ocProxy({})} end
+    fails(ae2, "missing request()")
+    ae2 = setup()
+    me.getCraftables = function()
+        return {ocProxy({request = function() return ocProxy({}) end})}
+    end
+    fails(ae2, "missing isComputing()")
+end)
+
+test("GTNH 2.8.4 fluid list uses registry name and amount", function()
+    local ae2, calls = setup()
+    me.getFluidInNetwork = nil
+    me.getFluidsInNetwork = callback(function()
+        return {
+            {name = "test.fluid", amount = 400},
+            {name = "other.fluid", amount = 5000},
+            {name = "test.fluid", amount = 600},
+        }
+    end)
+    local ok, message = ae2.requestItem("Processor Assembly", 1000, 2, "test.fluid")
+    assert(ok == false and message:find("meets or exceeds threshold", 1, true))
+    assert(calls.requests == 0 and calls.scans == 0)
+    assert(ae2.requestItem("Processor Assembly", 1001, 2, "test.fluid"))
+    assert(calls.requests == 1 and calls.amount == 2)
+    me.getFluidsInNetwork = callback(function() return {} end)
+    assert(ae2.requestItem("Processor Assembly", 1, 2, "test.fluid"))
+end)
+test("singular fluid API accepts amount and preserves empty result", function()
+    local ae2, calls = setup()
+    me.getFluidInNetwork = callback(function() return {amount = 1000} end)
+    local ok, message = ae2.requestItem("Processor Assembly", 1000, 1, "test.fluid")
+    assert(ok == false and message:find("meets or exceeds threshold", 1, true))
+    assert(calls.requests == 0)
+    me.getFluidInNetwork = callback(function() return nil end)
+    assert(ae2.requestItem("Processor Assembly", 1000, 1, "test.fluid"))
+end)
+test("invalid fluid data fails without submitting a request", function()
+    local ae2, calls = setup()
+    me.getFluidInNetwork = nil
+    me.getFluidsInNetwork = function() return nil end
+    local ok, message = ae2.requestItem("Processor Assembly", 10, 1, "test.fluid")
+    assert(ok == false and message:find("did not return a fluid list", 1, true))
+    me.getFluidsInNetwork = function() return {{name = "test.fluid"}} end
+    ok, message = ae2.requestItem("Processor Assembly", 10, 1, "test.fluid")
+    assert(ok == false and message:find("without a numeric amount", 1, true))
+    assert(calls.requests == 0)
 end)
 print(tests .. " tests passed")

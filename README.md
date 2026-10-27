@@ -127,7 +127,14 @@ Item stock thresholds use a fresh `allItems()` stack iterator (or stack list),
 summing `size` for stacks whose `label` matches the configured name. Labels should
 uniquely identify maintained items: items with the same display label share a stock
 count. No `getItemsInNetwork()` or `getItemInNetwork()` method is required.
-Fluid thresholds still use `getFluidInNetwork(registry_name)`.
+Fluid thresholds use `getFluidsInNetwork()`, matching the configured registry name
+against each fluid's `name` and summing its `amount`. On versions providing
+`getFluidInNetwork(registry_name)`, that direct lookup is retained and accepts
+either `amount` or the legacy `size` field.
+
+OpenComputers exposes component and crafting methods as callable tables. These
+are supported alongside Lua functions. Its `allItems()` iterator has a protected
+userdata proxy metatable and is consumed by calling it until it returns `nil`.
 
 The remaining API requirements are job methods `isComputing()` and `hasFailed()`,
 and CPU monitoring through `getCpus()` and `cpu.finalOutput()` (returning an output
@@ -141,6 +148,16 @@ lua tests/AE2_test.lua
 ```
 
 These tests do not replace an in-game check of the adapter and ME network.
+
+API references: the [OpenComputers AE2 wiki](https://ocdoc.cil.li/component:applied_energistics)
+describes Minecraft 1.12, AE2 rv6 and OC 1.7.3. For this fork, the
+[GTNH 2.8.4 mod list](https://github.com/GTNewHorizons/GT-New-Horizons-Modpack/tree/2.8.4)
+pins OpenComputers `1.11.20-GTNH`. Its
+[AE2 integration](https://github.com/GTNewHorizons/OpenComputers/blob/1.11.20-GTNH/src/main/scala/li/cil/oc/integration/appeng/NetworkControl.scala)
+confirms the iterator, fluid, CPU and job APIs above. Craftables expose
+`getItemStack()`, rather than `getStack()`; this program needs neither. The
+[Lua wrapper implementation](https://github.com/GTNewHorizons/OpenComputers/blob/1.11.20-GTNH/src/main/resources/assets/opencomputers/lua/machine.lua)
+defines callable methods and protected userdata proxies.
 
 ## Example
 

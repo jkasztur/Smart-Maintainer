@@ -8,11 +8,23 @@ local itemCache = {}
 local cacheTimestamp = 0
 local CACHE_DURATION = 600 -- 10 minutes in seconds
 
+-- OC exposes callbacks as callable tables and protects userdata proxy metatables.
+local function isCallable(value)
+    if type(value) == "function" then
+        return true
+    end
+    local mt = getmetatable(value)
+    return (type(value) == "table" or type(value) == "userdata") and
+        (mt == "userdata" or (type(mt) == "table" and type(mt.__call) == "function"))
+end
+
 local function requireMethod(object, method, owner)
-    if object == nil or type(object[method]) ~= "function" then
+    -- Missing fields on OC userdata proxies can throw from __index.
+    local ok, callback = pcall(function() return object[method] end)
+    if not ok or not isCallable(callback) then
         error((owner or "ME interface") .. " is missing " .. method .. "()", 0)
     end
-    return object[method]
+    return callback
 end
 
 -- allItems returns a stack iterator on OC; also accept a plain stack list.
@@ -28,9 +40,10 @@ local function getStockForItem(name)
             size = size + stack.size
         end
     end
-    local mt = getmetatable(stacks)
-    if type(stacks) == "function" or (type(mt) == "table" and mt.__call) then
-        for stack in stacks do
+    if isCallable(stacks) then
+        while true do
+            local stack = stacks()
+            if stack == nil then break end
             add(stack)
         end
     elseif type(stacks) == "table" then
@@ -41,6 +54,37 @@ local function getStockForItem(name)
         error("allItems() did not return a stack iterator or list", 0)
     end
     return {label = name, size = size}
+end
+
+local function getStockForFluid(registry)
+    if ME == nil then
+        error("ME interface is unavailable", 0)
+    end
+    -- Keep the direct lookup on versions that provide it. GTNH 2.8.4 exposes
+    -- getFluidsInNetwork() instead, with registry name and amount fields.
+    if isCallable(ME.getFluidInNetwork) then
+        local fluid = ME.getFluidInNetwork(registry)
+        if fluid == nil then return nil end
+        local size = fluid.amount or fluid.size
+        if type(size) ~= "number" then
+            error("getFluidInNetwork() returned a fluid without a numeric amount or size", 0)
+        end
+        return {label = fluid.label, size = size}
+    end
+    local fluids = requireMethod(ME, "getFluidsInNetwork")()
+    if type(fluids) ~= "table" then
+        error("getFluidsInNetwork() did not return a fluid list", 0)
+    end
+    local size = 0
+    for _, fluid in ipairs(fluids) do
+        if fluid.name == registry then
+            if type(fluid.amount) ~= "number" then
+                error("getFluidsInNetwork() returned a fluid without a numeric amount", 0)
+            end
+            size = size + fluid.amount
+        end
+    end
+    return {size = size}
 end
 
 -- Function to get or cache a specific craftable item
@@ -80,7 +124,7 @@ local function requestItem(name, threshold, count, fluidRegistry)
             local itemInSystem = nil
 
             if fluidRegistry then
-                itemInSystem = requireMethod(ME, "getFluidInNetwork")(fluidRegistry)
+                itemInSystem = getStockForFluid(fluidRegistry)
             else
                 itemInSystem = getStockForItem(name)
             end
