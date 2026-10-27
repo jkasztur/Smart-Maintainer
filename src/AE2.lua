@@ -116,7 +116,7 @@ local function getCraftableForItem(itemName)
     return nil
 end
 
-local function requestItem(name, threshold, count, fluidRegistry)
+local function requestItem(name, threshold, count, fluidRegistry, log)
     local craftable = getCraftableForItem(name)
 
     if craftable then
@@ -129,9 +129,16 @@ local function requestItem(name, threshold, count, fluidRegistry)
                 itemInSystem = getStockForItem(name)
             end
 
+            if log then
+                log("Storage: " .. name .. " = " .. (itemInSystem and itemInSystem.size or 0) ..
+                    "; threshold = " .. threshold .. "; batch = " .. count)
+            end
+
             if itemInSystem ~= nil and itemInSystem.size >= threshold then
                 return table.unpack({false, "The amount of " .. (itemInSystem.label or name) .. " (" .. itemInSystem.size .. ") meets or exceeds threshold (" .. threshold .. ")! Aborting request."})
             end
+        elseif log then
+            log("Storage: " .. name .. " = not checked (no threshold); batch = " .. count)
         end
 
         -- getCraftables was already filtered by the configured label.
@@ -152,8 +159,8 @@ local function requestItem(name, threshold, count, fluidRegistry)
     return table.unpack({false, name .. " is not craftable!"})
 end
 
-function AE2.requestItem(name, threshold, count, fluidRegistry)
-    local ok, success, message = pcall(requestItem, name, threshold, count, fluidRegistry)
+function AE2.requestItem(name, threshold, count, fluidRegistry, log)
+    local ok, success, message = pcall(requestItem, name, threshold, count, fluidRegistry, log)
     if not ok then
         return false, "Unable to request " .. tostring(name) .. ": " .. tostring(success)
     end
