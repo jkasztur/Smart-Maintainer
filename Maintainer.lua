@@ -16,7 +16,7 @@ function batchReady(groupTbl, itemsCrafting, groupNumber)
     if groupTbl.batchMode == true then
         local batchReady = ae2.batchReady(groupTbl.entries, itemsCrafting)
         if (not batchReady) then
-            logInfo("Group " .. groupNumber .. " has batch mode enabled but items still crafting!")
+            logInfo("Group " .. groupNumber .. ": busy")
             return false
         end
     end
@@ -24,9 +24,9 @@ function batchReady(groupTbl, itemsCrafting, groupNumber)
 end
 
 
-logInfo("Setting up group cache...")
+logInfo("Loading groups...")
 local groupCache = setupGroupCache(groups)
-logInfo("Group cache initialized.")
+logInfo("Groups ready.")
 
 local idxTable = {}
 for i=1, #groups do
@@ -55,20 +55,20 @@ while true do
 
     -- randomize recipe groups
     if (not priorityMode) and recipeGroupsRandomized and shuffleLists then
-        logInfo(">> Group order randomized!")
+        logInfo("Groups shuffled.")
         randomizeTable(idxTable)
     end
 
     for _, randGroupIdx in ipairs(idxTable) do
         local groupTbl = groups[randGroupIdx]
 
-        logInfo("=== Group " .. randGroupIdx .. " =============")
+        logInfo("-- Group " .. randGroupIdx .. " --")
 
         -- Step 1: Randomize if necessary.
         local itemKeys = groupCache[randGroupIdx]
         -- shuffle in-group items if necessary.
         if shuffleLists then -- stays false if randomization is disabled.
-            logInfo(">> Scheduling order shuffled for group " .. randGroupIdx .. "!")
+            logInfo("Group " .. randGroupIdx .. ": shuffled")
             randomizeTable(itemKeys)
             groupCache[randGroupIdx] = itemKeys
         end
@@ -82,7 +82,7 @@ while true do
         for _, item in ipairs(itemKeys) do
             local config = groupTbl.entries[item]
             if itemsCrafting[item] == true then
-                logInfo(item .. " is already being crafted, skipping...")
+                logInfo("Crafting: " .. item)
             else
                 local success, answer = ae2.requestItem(item, config[1], config[2], config[3])
                 logInfo(answer)

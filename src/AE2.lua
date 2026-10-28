@@ -22,7 +22,7 @@ local function requireMethod(object, method, owner)
     -- Missing fields on OC userdata proxies can throw from __index.
     local ok, callback = pcall(function() return object[method] end)
     if not ok or not isCallable(callback) then
-        error((owner or "ME interface") .. " is missing " .. method .. "()", 0)
+        error((owner or "ME interface") .. " missing " .. method .. "()", 0)
     end
     return callback
 end
@@ -35,7 +35,7 @@ local function getStockForItem(name)
     local function add(stack)
         if stack.label == name then
             if type(stack.size) ~= "number" then
-                error("allItems() returned an item without a numeric size", 0)
+                error("allItems(): invalid size", 0)
             end
             size = size + stack.size
         end
@@ -51,14 +51,14 @@ local function getStockForItem(name)
             add(stack)
         end
     else
-        error("allItems() did not return a stack iterator or list", 0)
+        error("allItems(): invalid iterator/list", 0)
     end
     return {label = name, size = size}
 end
 
 local function getStockForFluid(registry)
     if ME == nil then
-        error("ME interface is unavailable", 0)
+        error("ME interface unavailable", 0)
     end
     -- Keep the direct lookup on versions that provide it. GTNH 2.8.4 exposes
     -- getFluidsInNetwork() instead, with registry name and amount fields.
@@ -67,19 +67,19 @@ local function getStockForFluid(registry)
         if fluid == nil then return nil end
         local size = fluid.amount or fluid.size
         if type(size) ~= "number" then
-            error("getFluidInNetwork() returned a fluid without a numeric amount or size", 0)
+            error("getFluidInNetwork(): invalid amount/size", 0)
         end
         return {label = fluid.label, size = size}
     end
     local fluids = requireMethod(ME, "getFluidsInNetwork")()
     if type(fluids) ~= "table" then
-        error("getFluidsInNetwork() did not return a fluid list", 0)
+        error("getFluidsInNetwork(): invalid list", 0)
     end
     local size = 0
     for _, fluid in ipairs(fluids) do
         if fluid.name == registry then
             if type(fluid.amount) ~= "number" then
-                error("getFluidsInNetwork() returned a fluid without a numeric amount", 0)
+                error("getFluidsInNetwork(): invalid amount", 0)
             end
             size = size + fluid.amount
         end
@@ -105,7 +105,7 @@ local function getCraftableForItem(itemName)
     -- Look for this specific item in craftables
     local craftables = requireMethod(ME, "getCraftables")({["label"] = itemName})
     if type(craftables) ~= "table" then
-        error("getCraftables() did not return a craftable list", 0)
+        error("getCraftables(): invalid list", 0)
     end
     if #craftables >= 1 then
         itemCache[itemName] = craftables[1] -- Cache only this one item
@@ -130,32 +130,32 @@ local function requestItem(name, threshold, count, fluidRegistry)
             end
 
             if itemInSystem ~= nil and itemInSystem.size >= threshold then
-                return table.unpack({false, "The amount of " .. (itemInSystem.label or name) .. " (" .. itemInSystem.size .. ") meets or exceeds threshold (" .. threshold .. ")! Aborting request."})
+                return table.unpack({false, "Stocked: " .. (itemInSystem.label or name) .. " " .. itemInSystem.size .. "/" .. threshold})
             end
         end
 
         -- getCraftables was already filtered by the configured label.
-        requireMethod(craftable, "request", "Craftable for " .. name)
+        requireMethod(craftable, "request", "Craftable " .. name)
         local craft = craftable.request(count)
-        requireMethod(craft, "isComputing", "Crafting job for " .. name)
-        requireMethod(craft, "hasFailed", "Crafting job for " .. name)
+        requireMethod(craft, "isComputing", "Job " .. name)
+        requireMethod(craft, "hasFailed", "Job " .. name)
 
         while craft.isComputing() == true do
             os.sleep(1)
         end
         if craft.hasFailed() then
-            return table.unpack({false, "Failed to request " .. name .. " x " .. count})
+            return table.unpack({false, "Failed: " .. name .. " x" .. count})
         else
-            return table.unpack({true, "Requested " .. name .. " x " .. count})
+            return table.unpack({true, "Requested: " .. name .. " x" .. count})
         end
     end
-    return table.unpack({false, name .. " is not craftable!"})
+    return table.unpack({false, "No recipe: " .. name})
 end
 
 function AE2.requestItem(name, threshold, count, fluidRegistry)
     local ok, success, message = pcall(requestItem, name, threshold, count, fluidRegistry)
     if not ok then
-        return false, "Unable to request " .. tostring(name) .. ": " .. tostring(success)
+        return false, "Error: " .. tostring(name) .. ": " .. tostring(success)
     end
     return success, message
 end
