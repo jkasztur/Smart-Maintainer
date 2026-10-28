@@ -152,6 +152,15 @@ local function requestItem(name, threshold, count, fluidRegistry)
     return table.unpack({false, "No recipe: " .. name})
 end
 
+-- Read-only recipe check; distinguish a missing recipe from a lookup error.
+function AE2.isCraftable(name)
+    local ok, craftable = pcall(getCraftableForItem, name)
+    if not ok then
+        return nil, "Error: " .. tostring(name) .. ": " .. tostring(craftable)
+    end
+    return craftable ~= nil
+end
+
 function AE2.requestItem(name, threshold, count, fluidRegistry)
     local ok, success, message = pcall(requestItem, name, threshold, count, fluidRegistry)
     if not ok then

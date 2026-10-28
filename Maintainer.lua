@@ -28,6 +28,23 @@ logInfo("Loading groups...")
 local groupCache = setupGroupCache(groups)
 logInfo("Groups ready.")
 
+logInfo("Checking recipes...")
+local checkedRecipes = {}
+for _, group in ipairs(groups) do
+    for name in pairs(group.entries) do
+        if not checkedRecipes[name] then
+            local craftable, message = ae2.isCraftable(name)
+            if craftable == false then
+                logInfo("No recipe: " .. name)
+            elseif craftable == nil then
+                logInfo(message)
+            end
+            checkedRecipes[name] = true
+        end
+    end
+end
+logInfo("Recipes checked.")
+
 local idxTable = {}
 for i=1, #groups do
     idxTable[i] = i
